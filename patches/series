@@ -1,0 +1,8 @@
+build/soong 0001-area-A-host-arch-naming.patch
+build/soong 0002-area-B-arch-os-registration.patch
+build/soong 0003-area-C-musl-arm64-toolchain.patch
+build/soong 0004-area-D-bp2build-os-arch.patch
+build/soong 0005-area-E-test-fixture-pinning.patch
+build/soong 0006-area-F-microfactory-arm64.patch
+build/make 0001-host-arch-arm64.patch
+build/make 0002-combo-host-linux-arm64.patch

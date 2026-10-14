@@ -1,0 +1,33 @@
+diff --git a/scripts/microfactory.bash b/scripts/microfactory.bash
+index 192b38f..6b7c36d 100644
+--- a/scripts/microfactory.bash
++++ b/scripts/microfactory.bash
+@@ -23,12 +23,26 @@
+ # Ensure GOROOT is set to the in-tree version.
+ case $(uname) in
+     Linux)
+-        export GOROOT="${TOP}/prebuilts/go/linux-x86/"
++        case $(uname -m) in
++            x86_64)
++                export GOROOT="${TOP}/prebuilts/go/linux-x86/"
++                ;;
++            aarch64)
++                export GOROOT="${TOP}/prebuilts/go/linux-arm64/"
++                ;;
++            *)
++                echo "unknown Linux architecture:" $(uname -m) >&2
++                exit 1
++                ;;
++        esac
+         ;;
+     Darwin)
+         export GOROOT="${TOP}/prebuilts/go/darwin-x86/"
+         ;;
+-    *) echo "unknown OS:" $(uname) >&2 && exit 1;;
++    *)
++        echo "unknown OS:" $(uname) >&2
++        exit 1
++        ;;
+ esac
+ 
+ # Find the output directory

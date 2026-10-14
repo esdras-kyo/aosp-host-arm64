@@ -1,0 +1,33 @@
+diff --git a/android/arch.go b/android/arch.go
+index 3587b46..fec7a59 100644
+--- a/android/arch.go
++++ b/android/arch.go
+@@ -307,7 +307,7 @@ var (
+ 	// Linux is the OS for the Linux kernel plus the glibc runtime.
+ 	Linux = newOsType("linux_glibc", Host, false, X86, X86_64)
+ 	// LinuxMusl is the OS for the Linux kernel plus the musl runtime.
+-	LinuxMusl = newOsType("linux_musl", Host, false, X86, X86_64)
++	LinuxMusl = newOsType("linux_musl", Host, false, X86, X86_64, Arm64, Arm)
+ 	// Darwin is the OS for MacOS/Darwin host machines.
+ 	Darwin = newOsType("darwin", Host, false, Arm64, X86_64)
+ 	// LinuxBionic is the OS for the Linux kernel plus the Bionic libc runtime, but without the
+@@ -1497,7 +1497,9 @@ func determineBuildOS(config *config) {
+ 	config.BuildOS = func() OsType {
+ 		switch runtime.GOOS {
+ 		case "linux":
+-			if Bool(config.productVariables.HostMusl) {
++			// linux_glibc supports only x86/x86_64 hosts; an arm64 Linux host is built
++			// against musl (see linux_musl arch list + cc/config/arm_linux_host.go).
++			if Bool(config.productVariables.HostMusl) || runtime.GOARCH == "arm64" {
+ 				return LinuxMusl
+ 			}
+ 			return Linux
+@@ -1512,6 +1514,8 @@ func determineBuildOS(config *config) {
+ 		switch runtime.GOARCH {
+ 		case "amd64":
+ 			return X86_64
++		case "arm64":
++			return Arm64
+ 		default:
+ 			panic(fmt.Sprintf("unsupported Arch: %s", runtime.GOARCH))
+ 		}

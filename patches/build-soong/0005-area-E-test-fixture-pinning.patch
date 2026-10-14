@@ -1,0 +1,36 @@
+diff --git a/android/config.go b/android/config.go
+index cbf186e..45199f3 100644
+--- a/android/config.go
++++ b/android/config.go
+@@ -386,6 +386,13 @@ func TestConfig(buildDir string, env map[string]string, bp string, fs map[string
+ 
+ 	determineBuildOS(config)
+ 
++	// Soong unit tests model the canonical x86_64 glibc build host (host targets in
++	// modifyTestConfigToSupportArchMutator are X86_64). Pin fixture BuildOS/BuildArch so
++	// variants/paths stay deterministic regardless of the real build machine (an arm64
++	// host otherwise resolves to linux_musl/arm64 in determineBuildOS).
++	config.BuildOS = Linux
++	config.BuildArch = X86_64
++
+ 	return Config{config}
+ }
+ 
+@@ -421,6 +428,7 @@ func modifyTestConfigForMusl(config Config) {
+ 	delete(config.Targets, config.BuildOS)
+ 	config.productVariables.HostMusl = boolPtr(true)
+ 	determineBuildOS(config.config)
++	config.config.BuildArch = X86_64
+ 	config.Targets[config.BuildOS] = []Target{
+ 		{config.BuildOS, Arch{ArchType: X86_64}, NativeBridgeDisabled, "", "", false},
+ 		{config.BuildOS, Arch{ArchType: X86}, NativeBridgeDisabled, "", "", false},
+@@ -622,6 +630,9 @@ func (c *config) HostJavaToolPath(ctx PathContext, tool string) Path {
+ func (c *config) PrebuiltOS() string {
+ 	switch runtime.GOOS {
+ 	case "linux":
++		if c.BuildArch == Arm64 {
++			return "linux-arm64"
++		}
+ 		return "linux-x86"
+ 	case "darwin":
+ 		return "darwin-x86"

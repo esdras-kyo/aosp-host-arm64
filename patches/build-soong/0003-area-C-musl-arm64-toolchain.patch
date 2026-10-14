@@ -1,0 +1,243 @@
+diff --git a/cc/config/Android.bp b/cc/config/Android.bp
+index 1a21c13..96fcf85 100644
+--- a/cc/config/Android.bp
++++ b/cc/config/Android.bp
+@@ -30,6 +30,7 @@ bootstrap_go_package {
+         "x86_windows_host.go",
+ 
+         "arm64_linux_host.go",
++        "arm_linux_host.go",
+     ],
+     testSrcs: [
+         "tidy_test.go",
+diff --git a/cc/config/arm64_linux_host.go b/cc/config/arm64_linux_host.go
+index 5c7f926..05ea5f3 100644
+--- a/cc/config/arm64_linux_host.go
++++ b/cc/config/arm64_linux_host.go
+@@ -64,21 +64,21 @@ func init() {
+ 
+ // toolchain config for ARM64 Linux CrossHost. Almost everything is the same as the ARM64 Android
+ // target. The overridden methods below show the differences.
+-type toolchainLinuxArm64 struct {
++type toolchainLinuxBionicArm64 struct {
+ 	toolchainArm64
+ }
+ 
+-func (toolchainLinuxArm64) ClangTriple() string {
++func (toolchainLinuxBionicArm64) ClangTriple() string {
+ 	// Note the absence of "-android" suffix. The compiler won't define __ANDROID__
+ 	return "aarch64-linux"
+ }
+ 
+-func (toolchainLinuxArm64) Cflags() string {
++func (toolchainLinuxBionicArm64) Cflags() string {
+ 	// The inherited flags + extra flags
+ 	return "${config.Arm64Cflags} ${config.LinuxBionicArm64Cflags}"
+ }
+ 
+-func (toolchainLinuxArm64) CrtBeginSharedBinary() []string {
++func (toolchainLinuxBionicArm64) CrtBeginSharedBinary() []string {
+ 	return linuxArm64CrtBeginSharedBinary
+ }
+ 
+@@ -90,7 +90,7 @@ func linuxArm64ToolchainFactory(arch android.Arch) Toolchain {
+ 	// the host CPU needs the fix
+ 	extraLdflags := "-Wl,--fix-cortex-a53-843419"
+ 
+-	ret := toolchainLinuxArm64{}
++	ret := toolchainLinuxBionicArm64{}
+ 
+ 	// add the extra ld and lld flags
+ 	ret.toolchainArm64.ldflags = strings.Join([]string{
+diff --git a/cc/config/arm_linux_host.go b/cc/config/arm_linux_host.go
+new file mode 100644
+index 0000000..03672f9
+--- /dev/null
++++ b/cc/config/arm_linux_host.go
+@@ -0,0 +1,186 @@
++// Copyright 2022 Google Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package config
++
++import (
++	"strings"
++
++	"android/soong/android"
++)
++
++var (
++	linuxArmCflags = []string{
++		"-march=armv7a",
++	}
++
++	linuxArm64Cflags = []string{}
++
++	linuxArmLdflags = []string{
++		"-march=armv7a",
++	}
++
++	linuxArmLldflags = append(linuxArmLdflags,
++		"-Wl,--compress-debug-sections=zstd",
++	)
++
++	linuxArm64Ldflags = []string{}
++
++	linuxArm64Lldflags = append(linuxArm64Ldflags,
++		"-Wl,--compress-debug-sections=zstd",
++	)
++)
++
++func init() {
++	pctx.StaticVariable("LinuxArmCflags", strings.Join(linuxArmCflags, " "))
++	pctx.StaticVariable("LinuxArm64Cflags", strings.Join(linuxArm64Cflags, " "))
++	pctx.StaticVariable("LinuxArmLdflags", strings.Join(linuxArmLdflags, " "))
++	pctx.StaticVariable("LinuxArmLldflags", strings.Join(linuxArmLldflags, " "))
++	pctx.StaticVariable("LinuxArm64Ldflags", strings.Join(linuxArm64Ldflags, " "))
++	pctx.StaticVariable("LinuxArm64Lldflags", strings.Join(linuxArm64Lldflags, " "))
++	pctx.StaticVariable("LinuxArmYasmFlags", "-f elf32 -m arm")
++	pctx.StaticVariable("LinuxArm64YasmFlags", "-f elf64 -m aarch64")
++}
++
++// Musl arm+arm64
++
++type toolchainLinuxArm struct {
++	toolchain32Bit
++	toolchainLinux
++}
++
++type toolchainLinuxArm64 struct {
++	toolchain64Bit
++	toolchainLinux
++}
++
++func (t *toolchainLinuxArm) Name() string {
++	return "arm"
++}
++
++func (t *toolchainLinuxArm64) Name() string {
++	return "arm64"
++}
++
++func (t *toolchainLinuxArm) Cflags() string {
++	return "${config.LinuxCflags} ${config.LinuxArmCflags}"
++}
++
++func (t *toolchainLinuxArm) Cppflags() string {
++	return ""
++}
++
++func (t *toolchainLinuxArm64) Cflags() string {
++	return "${config.LinuxCflags} ${config.LinuxArm64Cflags}"
++}
++
++func (t *toolchainLinuxArm64) Cppflags() string {
++	return ""
++}
++
++func (t *toolchainLinuxArm) Ldflags() string {
++	return "${config.LinuxLdflags} ${config.LinuxArmLdflags}"
++}
++
++func (t *toolchainLinuxArm) Lldflags() string {
++	return "${config.LinuxLldflags} ${config.LinuxArmLldflags}"
++}
++
++func (t *toolchainLinuxArm64) Ldflags() string {
++	return "${config.LinuxLdflags} ${config.LinuxArm64Ldflags}"
++}
++
++func (t *toolchainLinuxArm64) Lldflags() string {
++	return "${config.LinuxLldflags} ${config.LinuxArm64Lldflags}"
++}
++
++func (t *toolchainLinuxArm) YasmFlags() string {
++	return "${config.LinuxArmYasmFlags}"
++}
++
++func (t *toolchainLinuxArm64) YasmFlags() string {
++	return "${config.LinuxArm64YasmFlags}"
++}
++
++func (toolchainLinuxArm) LibclangRuntimeLibraryArch() string {
++	return "arm"
++}
++
++func (toolchainLinuxArm64) LibclangRuntimeLibraryArch() string {
++	return "arm64"
++}
++
++func (t *toolchainLinuxArm) InstructionSetFlags(isa string) (string, error) {
++	// TODO: Is no thumb OK?
++	return t.toolchainBase.InstructionSetFlags("")
++}
++
++type toolchainLinuxMuslArm struct {
++	toolchainLinuxArm
++	toolchainMusl
++}
++
++type toolchainLinuxMuslArm64 struct {
++	toolchainLinuxArm64
++	toolchainMusl
++}
++
++func (t *toolchainLinuxMuslArm) ClangTriple() string {
++	return "arm-linux-musleabihf"
++}
++
++func (t *toolchainLinuxMuslArm) Cflags() string {
++	return t.toolchainLinuxArm.Cflags() + " " + t.toolchainMusl.Cflags()
++}
++
++func (t *toolchainLinuxMuslArm) Ldflags() string {
++	return t.toolchainLinuxArm.Ldflags() + " " + t.toolchainMusl.Ldflags()
++}
++
++func (t *toolchainLinuxMuslArm) Lldflags() string {
++	return t.toolchainLinuxArm.Lldflags() + " " + t.toolchainMusl.Lldflags()
++}
++
++func (t *toolchainLinuxMuslArm64) ClangTriple() string {
++	return "aarch64-linux-musl"
++}
++
++func (t *toolchainLinuxMuslArm64) Cflags() string {
++	return t.toolchainLinuxArm64.Cflags() + " " + t.toolchainMusl.Cflags()
++}
++
++func (t *toolchainLinuxMuslArm64) Ldflags() string {
++	return t.toolchainLinuxArm64.Ldflags() + " " + t.toolchainMusl.Ldflags()
++}
++
++func (t *toolchainLinuxMuslArm64) Lldflags() string {
++	return t.toolchainLinuxArm64.Lldflags() + " " + t.toolchainMusl.Lldflags()
++}
++
++var toolchainLinuxMuslArmSingleton Toolchain = &toolchainLinuxMuslArm{}
++
++var toolchainLinuxMuslArm64Singleton Toolchain = &toolchainLinuxMuslArm64{}
++
++func linuxMuslArmToolchainFactory(arch android.Arch) Toolchain {
++	return toolchainLinuxMuslArmSingleton
++}
++
++func linuxMuslArm64ToolchainFactory(arch android.Arch) Toolchain {
++	return toolchainLinuxMuslArm64Singleton
++}
++
++func init() {
++	registerToolchainFactory(android.LinuxMusl, android.Arm, linuxMuslArmToolchainFactory)
++	registerToolchainFactory(android.LinuxMusl, android.Arm64, linuxMuslArm64ToolchainFactory)
++}

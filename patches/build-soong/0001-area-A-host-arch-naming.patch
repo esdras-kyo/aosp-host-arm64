@@ -1,0 +1,87 @@
+diff --git a/android/paths.go b/android/paths.go
+index e7829b9..ad1451d 100644
+--- a/android/paths.go
++++ b/android/paths.go
+@@ -1749,6 +1749,9 @@ func pathForInstall(ctx PathContext, os OsType, arch ArchType, partition string,
+ 		archName := arch.String()
+ 		if os.Class == Host && (arch == X86_64 || arch == Common) {
+ 			archName = "x86"
++			if ctx.Config().BuildArch == Arm64 {
++				archName = "arm64"
++			}
+ 		}
+ 		partionPaths = []string{"host", osName + "-" + archName, partition}
+ 	}
+diff --git a/ui/build/config.go b/ui/build/config.go
+index a676321..be36efb 100644
+--- a/ui/build/config.go
++++ b/ui/build/config.go
+@@ -897,6 +897,9 @@ func (c *configImpl) SoongOutDir() string {
+ func (c *configImpl) PrebuiltOS() string {
+ 	switch runtime.GOOS {
+ 	case "linux":
++		if runtime.GOARCH == "arm64" {
++			return "linux-arm64"
++		}
+ 		return "linux-x86"
+ 	case "darwin":
+ 		return "darwin-x86"
+@@ -1332,7 +1335,14 @@ func (c *configImpl) hostCrossOut() string {
+ 
+ func (c *configImpl) HostPrebuiltTag() string {
+ 	if runtime.GOOS == "linux" {
+-		return "linux-x86"
++		switch runtime.GOARCH {
++		case "amd64":
++			return "linux-x86"
++		case "arm64":
++			return "linux-arm64"
++		default:
++			panic("Unsupported Linux architecture")
++		}
+ 	} else if runtime.GOOS == "darwin" {
+ 		return "darwin-x86"
+ 	} else {
+diff --git a/ui/build/path.go b/ui/build/path.go
+index 86e61c0..359ba44 100644
+--- a/ui/build/path.go
++++ b/ui/build/path.go
+@@ -29,6 +29,13 @@ import (
+ 	"android/soong/ui/metrics"
+ )
+ 
++func hostPrebuiltArch() string {
++	if runtime.GOOS == "linux" && runtime.GOARCH == "arm64" {
++		return "arm64"
++	}
++	return "x86"
++}
++
+ // parsePathDir returns the list of filenames of readable files in a directory.
+ // This does not recurse into subdirectories, and does not contain subdirectory
+ // names in the list.
+@@ -106,7 +113,8 @@ func SetupLitePath(ctx Context, config Config, tmpDir string) {
+ 	myPath, _ = filepath.Abs(myPath)
+ 
+ 	// Set up the checked-in prebuilts path directory for the current host OS.
+-	prebuiltsPath, _ := filepath.Abs("prebuilts/build-tools/path/" + runtime.GOOS + "-x86")
++	prebuiltsPath, _ := filepath.Abs(
++	"prebuilts/build-tools/path/" + runtime.GOOS + "-" + hostPrebuiltArch())
+ 	myPath = prebuiltsPath + string(os.PathListSeparator) + myPath
+ 
+ 	// Set $PATH to be the directories containing the host tool symlinks, and
+@@ -241,7 +249,13 @@ func SetupPath(ctx Context, config Config) {
+ 
+ 	// We put some prebuilts in $PATH, since it's infeasible to add dependencies
+ 	// for all of them.
+-	prebuiltsPath, _ := filepath.Abs("prebuilts/build-tools/path/" + runtime.GOOS + "-x86")
++	hostPrebuiltArch := "x86"
++if runtime.GOOS == "linux" && runtime.GOARCH == "arm64" {
++	hostPrebuiltArch = "arm64"
++}
++
++prebuiltsPath, _ := filepath.Abs(
++	"prebuilts/build-tools/path/" + runtime.GOOS + "-" + hostPrebuiltArch)
+ 	myPath = prebuiltsPath + string(os.PathListSeparator) + myPath
+ 
+ 	// Replace the $PATH variable with the path_interposer symlinks, and
